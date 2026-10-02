@@ -1,0 +1,6 @@
+interface:
+  display_name: "飞书工作知识库 Agent"
+  short_description: "同步飞书工作知识库、共享背景与角色偏好，整理资料并在确认后归档"
+  default_prompt: "使用 $lark-research-workspace 配置我的飞书工作知识库，同步共同背景并从管理视角整理资料。"
+policy:
+  allow_implicit_invocation: true
