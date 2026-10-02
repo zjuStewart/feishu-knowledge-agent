@@ -1,0 +1,108 @@
+{
+  "title": "工作知识库｜正文修改后重新整理",
+  "steps": [
+    {
+      "id": "changed",
+      "type": "SetRecordTrigger",
+      "title": "正文或来源版本变化",
+      "next": "invalidate",
+      "data": {
+        "table_name": "资料收件箱",
+        "record_watch_conjunction": "and",
+        "record_watch_info": [
+          {
+            "field_name": "处理状态",
+            "operator": "isNot",
+            "value": [
+              {
+                "value_type": "option",
+                "value": {
+                  "name": "测试完成"
+                }
+              }
+            ]
+          }
+        ],
+        "field_watch_info": [
+          {
+            "field_name": "正文"
+          },
+          {
+            "field_name": "标题"
+          },
+          {
+            "field_name": "来源版本"
+          }
+        ],
+        "trigger_control_list": [
+          "pasteUpdate",
+          "automationBatchUpdate",
+          "syncUpdate",
+          "appendImport",
+          "openAPIBatchUpdate"
+        ]
+      }
+    },
+    {
+      "id": "invalidate",
+      "type": "SetRecordAction",
+      "title": "使旧摘要失效",
+      "data": {
+        "table_name": "资料收件箱",
+        "ref_info": {
+          "step_id": "changed"
+        },
+        "max_set_record_num": 1,
+        "field_values": [
+          {
+            "field_name": "统一摘要",
+            "value": [
+              {
+                "value_type": "text",
+                "value": ""
+              }
+            ]
+          },
+          {
+            "field_name": "共同背景版本",
+            "value": [
+              {
+                "value_type": "text",
+                "value": ""
+              }
+            ]
+          },
+          {
+            "field_name": "摘要依据版本",
+            "value": [
+              {
+                "value_type": "text",
+                "value": ""
+              }
+            ]
+          },
+          {
+            "field_name": "处理状态",
+            "value": [
+              {
+                "value_type": "option",
+                "value": {
+                  "name": "待整理"
+                }
+              }
+            ]
+          },
+          {
+            "field_name": "处理回执",
+            "value": [
+              {
+                "value_type": "text",
+                "value": "正文或来源版本变化，旧摘要已失效；重新整理中。"
+              }
+            ]
+          }
+        ]
+      }
+    }
+  ]
+}
