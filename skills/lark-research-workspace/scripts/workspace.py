@@ -40,6 +40,13 @@ def plain(xml):
     return html.unescape(re.sub('<[^>]+>','',xml)).strip()
 
 class Error(RuntimeError): pass
+
+def shared_roots(settings):
+    roots=settings.get('shared_context_roots',[settings.get('shared_context_root')])
+    if not isinstance(roots,list) or not roots or any(not isinstance(v,str) or not v.strip() for v in roots):
+        raise Error('共同背景根节点配置无效')
+    return list(dict.fromkeys(v.strip() for v in roots))
+
 class Client:
     def __init__(self,cfg): self.cli=cfg.get('cli','lark-cli'); self.calls=[]
     def call(self,args,stdin=None):
@@ -131,7 +138,7 @@ class Workspace:
             if before!=after:changes.append({'id':d['document_id'],'before':before,'after':after})
             self.save('documents/'+d['document_id']+'.json',d)
         result={'checked_at':now(),'directory_hash':mapping.get('directory_hash'),'changes':changes,
-                'root_visible':any(n['node_token']==self.settings['shared_context_root'] for n in mapping['nodes'])}
+                'root_visible':set(shared_roots(self.settings)).issubset({n['node_token'] for n in mapping['nodes']})}
         self.save('directory-reconciliation.json',result)
         return mapping,nodes,result
     def refresh_context(self,all_docs=False):
@@ -161,14 +168,15 @@ class Workspace:
         mapping=read(self.cfg['directory'],{})
         if mapping.get('directory_complete') is True:
             shared_ids={n['obj_token'] for n in mapping['nodes'] if n.get('shared_context') and n['obj_type']=='docx'}
-            root_visible=any(n['node_token']==self.settings['shared_context_root'] for n in mapping['nodes'])
+            missing_roots=sorted(set(shared_roots(self.settings))-{n['node_token'] for n in mapping['nodes']})
+            root_visible=not missing_roots
             core=[d for d in core if d['document_id'] in shared_ids]
             missing=shared_ids-{d['document_id'] for d in core}
             if not root_visible or missing:
                 bundle={'version':digest({'root_visible':root_visible,'missing':sorted(missing),'directory':mapping.get('directory_hash')}),
                     'valid':False,'sources':[],'parts':[],'needs_summary':[],'checked_at':now(),
                     'reason':'共同背景根节点不再可见，需指定新的根节点' if not root_visible else '共同背景正文未完整核验',
-                    'unavailable_documents':sorted(missing),'root_visible':root_visible}
+                    'unavailable_documents':sorted(missing),'root_visible':root_visible,'missing_shared_context_roots':missing_roots}
                 self.save('context-bundle.json',bundle);return bundle
         if not core: raise Error('请先刷新共同背景')
         parts=[]; versions=[]; needs_summary=[]
