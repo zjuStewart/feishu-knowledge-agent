@@ -1,0 +1,6 @@
+interface:
+  display_name: "飞书知识库目录同步"
+  short_description: "每日自动或手动刷新飞书知识库的本地目录，支持各用户独立配置"
+  default_prompt: "使用 $lark-wiki-directory 立即更新我的飞书工作知识库目录，并简短报告结果。"
+policy:
+  allow_implicit_invocation: true
