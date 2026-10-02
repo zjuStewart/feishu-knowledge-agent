@@ -4,12 +4,12 @@
 
 ## 快速开始
 
-**准备两个链接：知识库、共同背景根文档。** 后者及其子文档是所有角色共有的背景。把下面这段发给你的 Agent，填上自己的信息即可：
+**准备知识库链接和共同背景文档链接（可以多个）。** 背景文档及其子文档是所有角色共有的背景，重叠部分只计算一次。把下面这段发给你的 Agent，填上自己的信息即可：
 
 ```text
 请安装并配置 https://github.com/zjuStewart/feishu-knowledge-agent ，按主 Skill 的 SKILL.md 执行。
 知识库：[名称与链接]
-共同背景根文档：[链接，包含其下子文档]
+共同背景根文档：[一个或多个链接，包含各自子文档]
 我的职责与关注点：[可选]
 先使用本地操作模式，目录每天 [09:00，Asia/Shanghai，可修改] 更新一次，也允许手动更新。
 请检查环境和飞书访问权限，查询所需 ID，安装三个 Skill 并生成独立配置；不要覆盖已有配置。
@@ -59,6 +59,8 @@ python3 skills/lark-research-workspace/scripts/init_workspace.py \
   --shared-root 'YOUR_SHARED_ROOT_NODE_TOKEN'
 ```
 
+需要多个背景入口时，重复添加 `--shared-root '另一背景节点TOKEN'`；共同背景取各入口及后代的并集，任一必需入口不可见时暂停使用当前背景。原有单入口配置仍可使用。
+
 把生成的 `profile.json` 路径交给 Agent，并说“使用 lark-research-workspace，同步我的工作知识库”。初始化不覆盖非空目录，也不会创建定时任务。遇到 `needs_summary`，由 Agent 按 Skill 读取完整缓存并补齐摘要，不反复重跑整个同步。
 
 </details>
@@ -67,7 +69,7 @@ python3 skills/lark-research-workspace/scripts/init_workspace.py \
 
 ## 支持范围与验证
 
-原始流程已在 Codex + 飞书 CLI 上实测，功能代码通过38项离线测试；其他账号云端部署、Claude Code、豆包、WorkBuddy 的执行与调度需分别验证。原生 Windows 尚未支持。
+原始流程已在 Codex + 飞书 CLI 上实测，功能代码通过42项离线测试；其他账号云端部署、Claude Code、豆包、WorkBuddy 的执行与调度需分别验证。原生 Windows 尚未支持。
 
 超过45000字符的材料需分段处理；文字 PDF 需要 `pdftotext`，扫描件、图片、音视频及任意外部网页需额外提取。检索使用词项与片段匹配。真实事件触发、设备关机运行和真实归档应分别验收，离线测试不能替代。
 
