@@ -1,0 +1,6 @@
+{
+  "chat_id": "本人智能纪要助手私聊的oc_ID",
+  "sender_id": "助手的ou_ID",
+  "base_url": "https://你的租户.feishu.cn",
+  "output_dir": "~/工作知识库/纪要来源核验"
+}
