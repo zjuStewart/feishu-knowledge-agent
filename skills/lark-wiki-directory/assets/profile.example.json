@@ -1,0 +1,7 @@
+{
+  "space_name": "你的知识库名称",
+  "space_id": "填写知识空间ID",
+  "base_url": "https://你的租户.feishu.cn",
+  "shared_context_root": "填写共同背景根节点token",
+  "output_dir": "~/工作知识库目录"
+}
