@@ -1,0 +1,27 @@
+# Personal configuration and runtime data belong outside this repository.
+.env
+.env.*
+!.env.example
+profile.json
+settings.json
+cloud-config.json
+directory-profile.json
+meeting-profile.json
+field-map.json
+state/
+runtime/
+generated/
+directory/
+meeting-source/
+trial/
+sources/
+evidence/
+documents/
+inbox/
+plans/
+*.log
+*.zip
+__pycache__/
+*.py[cod]
+.DS_Store
+.venv/
