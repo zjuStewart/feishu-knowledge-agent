@@ -17,7 +17,11 @@ def initialize(destination, base_url, space_id, space_name, shared_root,
     url = urlsplit(base_url)
     if url.scheme != 'https' or not url.hostname or url.username or url.password or url.query or url.fragment or url.path not in ('', '/'):
         raise ValueError('base_url 应为不含路径、密码或参数的 HTTPS 飞书租户域名。')
-    if not all(str(v).strip() for v in (space_id, space_name, shared_root)):
+    roots = [shared_root] if isinstance(shared_root, str) else shared_root
+    if not isinstance(roots, list) or not roots or any(not isinstance(v, str) or not v.strip() for v in roots):
+        raise ValueError('共同背景根节点必须是一个或多个非空节点 ID。')
+    roots = list(dict.fromkeys(v.strip() for v in roots))
+    if not all(str(v).strip() for v in (space_id, space_name)):
         raise ValueError('知识库 ID、名称和共同背景根节点均必填。')
     if bool(chat_id) != bool(sender_id):
         raise ValueError('最近纪要核验需要同时提供本人助手会话 ID 和机器人 ID。')
@@ -31,7 +35,7 @@ def initialize(destination, base_url, space_id, space_name, shared_root,
         path.parent.mkdir(parents=True, exist_ok=True)
         path.write_text(json.dumps(value, ensure_ascii=False, indent=2) + '\n', encoding='utf-8')
     save('settings.json', {'space_id':str(space_id), 'space_name':space_name,
-         'base_url':base_url.rstrip('/'), 'shared_context_root':shared_root})
+         'base_url':base_url.rstrip('/'), 'shared_context_root':roots[0], 'shared_context_roots':roots})
     save('directory-profile.json', {'settings_path':str(root/'settings.json'), 'output_dir':str(root/'directory'), 'cli':shutil.which(cli) or cli})
     save('profile.json', {'state_dir':str(root/'state'), 'settings':str(root/'settings.json'),
          'directory':str(root/'directory/knowledge-map.json'), 'cloud_config':str(root/'cloud-config.json'),
@@ -54,7 +58,7 @@ def main():
     p.add_argument('--base-url', required=True)
     p.add_argument('--space-id', required=True)
     p.add_argument('--space-name', required=True)
-    p.add_argument('--shared-root', required=True)
+    p.add_argument('--shared-root', required=True, action='append', help='Repeat for multiple shared background roots')
     p.add_argument('--skills-dir')
     p.add_argument('--cli', default='lark-cli')
     p.add_argument('--chat-id')
