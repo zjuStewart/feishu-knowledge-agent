@@ -1,0 +1,6 @@
+interface:
+  display_name: "飞书最近纪要核验"
+  short_description: "核验最近会议的原始日期、来源与版本，防止旧会议补发或历史缓存误判"
+  default_prompt: "使用 $lark-meeting-source-check 核验我最近一次会议的智能纪要来源。"
+policy:
+  allow_implicit_invocation: true
