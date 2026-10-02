@@ -1,64 +1,52 @@
 # Feishu Knowledge Agent
 
-把飞书知识库接到你自己的 Agent：资料接收、共同背景、角色问答、每日同步，以及确认后的可编辑文档归档。
+让 AI Agent 使用你的飞书知识库：整理会议和资料、按角色回答问题、自动更新目录，并在你确认后归档为可编辑文档。
 
-这是一个可配置的 **Skill 套件**。主入口是 `lark-research-workspace`，配套 `lark-wiki-directory` 与 `lark-meeting-source-check`。模型由宿主 Agent 或飞书云端提供，脚本不直接调用模型 API，也不读取模型密钥。
+## 快速开始
 
-## 工作模式
-
-```mermaid
-flowchart LR
-  A[智能纪要 / 妙记 / 文件 / 转发文字] --> B[来源与版本核验]
-  B --> C[资料收件箱]
-  W[飞书知识库] --> D[目录与变化检测]
-  D --> E[版本化共同背景]
-  U[用户背景与角色偏好] --> F[统一整理与按需问答]
-  E --> F
-  C --> F
-  F --> P[具体归档计划]
-  P --> H[用户确认]
-  H --> R[归档与回读核验]
-```
-
-| 能力 | 行为 |
-| --- | --- |
-| 目录同步 | 每日或手动刷新，识别新增、改名、移动与不再可见的节点 |
-| 共同背景 | 用户指定根文档及其后代；仅重新读取变化正文，摘要绑定来源版本 |
-| 多角色 | 管理、内容、趣味共用事实背景，分别使用偏好；用户背景独立配置 |
-| 最近会议 | 按实际会议开始时间和助手通知核验，旧会议补发不能覆盖较新会议 |
-| 多来源接收 | 飞书文档、妙记文字、TXT/MD/CSV/JSON/DOCX、文字PDF与已提取的外部文字 |
-| 归档 | 绑定来源、版本、完整目标路径及动作，用户确认后执行并核验正文与编辑权限 |
-| 变更适配 | 移出背景子树的材料退出共同背景；不可见/不可读内容和旧副本退出当前问答 |
-
-## 安装
-
-需要 Python 3.9+、macOS/Linux、可执行命令的 Agent，以及已用本人用户身份授权的 `lark-cli`。CLI 必须提供本仓库使用的 `wiki +node-list`、`docs +fetch` 等命令；先用 `lark-cli --help` 核对已安装版本。飞书登录及权限由每位使用者分别完成，不随本包分发。
-
-从仓库页面选择 Code → Download ZIP 后解压，或克隆仓库。将 `skills/` 下的三个文件夹复制到宿主的 Skill 目录。Codex 可使用 `~/.codex/skills/`；已有同名版本时先比较差异或备份，再更新。也可以直接让有文件读取与命令执行能力的 Agent 读取主 Skill 的 `SKILL.md`。
-
-本仓库的原始工作流程已在 Codex + 飞书 CLI 上实测。发布版新增的独立配置初始化和模板绑定通过离线测试；其他账号的完整云端部署仍需按下方验收。Claude Code、豆包、WorkBuddy 的 Skill 发现、执行权限和调度能力尚未逐一实测。
-
-## 让 AI Agent 帮你配置
-
-准备好知识库链接、共同背景根文档链接，以及自己的职责与关注点，然后把以下提示词发给 Agent：
+**准备两个链接：知识库、共同背景根文档。** 后者及其子文档是所有角色共有的背景。把下面这段发给你的 Agent，填上自己的信息即可：
 
 ```text
-请帮我安装并配置 https://github.com/zjuStewart/feishu-knowledge-agent 。
-先阅读 README 和主 Skill 下的 references/agent-setup-prompts.md，按其中“首次安装与配置”执行；先收集缺少的资料卡信息。
+请安装并配置 https://github.com/zjuStewart/feishu-knowledge-agent ，按主 Skill 的 SKILL.md 执行。
 知识库：[名称与链接]
 共同背景根文档：[链接，包含其下子文档]
-我的职责与关注点：[填写]
-处理方式：[本地操作 / 本地操作 + 飞书云端整理]
-更新方式：[只手动 / 每天一次，填写时间与时区]
-由你查询技术 ID，为我创建独立配置。真实归档先给出具体计划并等我确认。
-登录由我完成；不要读取或向我索要任何模型 API Key。
+我的职责与关注点：[可选]
+先使用本地操作模式，目录每天 [09:00，Asia/Shanghai，可修改] 更新一次，也允许手动更新。
+请检查环境和飞书访问权限，查询所需 ID，安装三个 Skill 并生成独立配置；不要覆盖已有配置。
+完成首次同步和带来源的问答验证，告诉我哪些功能已可用。真实归档先给出具体计划，等我确认。
+登录由我完成；缺权限时告诉我需要什么、找谁处理。不要读取或索要模型 API Key。
 ```
 
-完整的[配置提示词与准备清单](skills/lark-research-workspace/references/agent-setup-prompts.md)包含资料卡、首次安装、云端配置、每日/手动更新三组提示词，以及环境要求、权限负责人和验收方式。当前无需额外配置 OpenAI API Key；其他宿主是否能执行，取决于它的文件、命令和调度能力。
+**运行需要：** macOS/Linux、Python 3.9+、能读文件和执行命令的 Agent，以及本人授权的 `lark-cli`。Agent 可先检查环境，再引导你完成缺少的步骤。当前无需额外配置 OpenAI API Key，模型由宿主 Agent 或飞书提供。
 
-## 第一次配置（手动方式）
+## 配好后怎么用
 
-在仓库根目录执行以下命令，把示例值换成自己的参数。初始化只创建本地配置，不访问飞书、不创建定时任务，也不会覆盖非空目录。
+| 直接对 Agent 说 | 会做什么 |
+| --- | --- |
+| “立即更新目录” | 刷新文档位置，识别新增、改名、移动和不再可见的节点 |
+| “同步工作知识库” | 更新目录、变化正文和共同背景，失效材料退出当前问答 |
+| “从管理/内容视角回答……” | 共用事实背景，按角色偏好检索并标明来源 |
+| “整理最近一次会议，给出归档计划” | 先核验实际会议日期和来源，再预览目标路径与动作 |
+| “确认归档 ARC-…” | 核验该计划仍有效后执行，检查正文和编辑权限 |
+
+支持智能纪要、妙记文字、上传文件及已提取的外部文字。管理、内容、趣味三个角色可分别设置关注点。最近会议检索需配置本人纪要助手会话，也可直接提供会议链接。
+
+## 自动运行与云端
+
+目录可每天更新，也可随时手动更新；无变化保持安静，有实质变化或需要处理时才通知。正文仅在变化时重新读取，摘要绑定来源版本，问答按需取片段。
+
+- **本地操作：** 同步和归档需要设备与宿主在线；“本地”不代表模型离线运行。
+- **飞书云端整理：** 配置处理台和事件任务后可在设备关闭时整理资料；本地目录仍需设备在线才能刷新。当前没有独立云端归档执行器或统一模式切换按钮。
+- **开通云端：** 向 Agent 说明“为我配置飞书云端整理”，并指定处理台链接或允许新建。部署步骤见[云端说明](skills/lark-research-workspace/references/cloud-setup.md)，配置过程不需要把模型密钥交给 Agent。
+
+## 手动安装与更多配置
+
+<details>
+<summary>展开手动安装步骤（已让 Agent 配置的用户可跳过）</summary>
+
+下载仓库 ZIP 或克隆仓库，将 `skills/` 下三个文件夹放进宿主 Skill 目录；Codex 可用 `~/.codex/skills/`。已有同名版本先比较或备份。用 `lark-cli --help` 确认支持 `wiki +node-list`、`docs +fetch` 等命令，并由本人完成授权。
+
+在仓库根目录初始化，替换示例参数；个人配置与运行数据放在仓库外：
 
 ```bash
 python3 skills/lark-research-workspace/scripts/init_workspace.py \
@@ -69,45 +57,21 @@ python3 skills/lark-research-workspace/scripts/init_workspace.py \
   --shared-root 'YOUR_SHARED_ROOT_NODE_TOKEN'
 ```
 
-配置和运行数据应放在本仓库外。向 Agent 提供生成的 `profile.json` 路径，然后说：
+把生成的 `profile.json` 路径交给 Agent，并说“使用 lark-research-workspace，同步我的工作知识库”。初始化不覆盖非空目录，也不会创建定时任务。遇到 `needs_summary`，由 Agent 按 Skill 读取完整缓存并补齐摘要，不反复重跑整个同步。
 
-> 使用 lark-research-workspace，同步我的工作知识库；配置文件是上述个人 profile.json。先报告共同背景范围，再从管理视角整理待办。
+</details>
 
-脚本也可以直接运行：
+[个人配置参数](skills/lark-research-workspace/references/configuration.md) · [每日同步模板](skills/lark-research-workspace/references/scheduling.md) · [详细配置提示词与权限清单](skills/lark-research-workspace/references/agent-setup-prompts.md)
 
-```bash
-python3 skills/lark-research-workspace/scripts/workspace.py \
-  --config "$HOME/workspaces/feishu-knowledge/profile.json" daily-sync
-```
+## 支持范围与验证
 
-第一次长正文可能返回 `needs_summary`，交给宿主 Agent 按 Skill 读取完整缓存并写入版本绑定摘要。不要反复重跑整个同步。
+原始流程已在 Codex + 飞书 CLI 上实测，功能代码通过38项离线测试；其他账号云端部署、Claude Code、豆包、WorkBuddy 的执行与调度需分别验证。原生 Windows 尚未支持。
 
-初始为本地处理模式：目录、缓存、角色检索、资料接收、归档计划可用。接入飞书表内自动总结，按 [云端部署说明](skills/lark-research-workspace/references/cloud-setup.md) 创建自己的处理台，再填写 `cloud-config.json`。不含任何原作者的表格或文档地址。
-
-## 常用请求
-
-- “同步工作知识库”：刷新目录、文档版本、共同背景和已接收资料。
-- “只更新目录”：使用 `lark-wiki-directory`，只读目录，不处理正文。
-- “用最近一次会议测试”：先使用 `lark-meeting-source-check`，首次需配置本人纪要助手会话。
-- “从管理/内容视角回答这个问题”：共用背景，按角色检索有来源的证据。
-- “整理这份资料，给出归档计划”：先生成预览，等待具体确认。
-- “确认归档 ARC-…”：核验对应计划未变后执行，不能把表格状态当成人工确认。
-
-## 定时与运行边界
-
-定时功能由宿主提供，参见 [每日同步模板](skills/lark-research-workspace/references/scheduling.md)。默认每天一次，同时保留手动触发。没有变化保持安静；有实质变化、失败或需要处理时才通知。
-
-本地同步和归档执行需要设备与宿主在线。飞书表内总结、云端纪要/妙记事件任务配置完成后可独立运行；它们不会在设备关闭时更新本地文件。当前没有独立云端执行器、完整重试补偿队列或统一模式切换按钮。
-
-超过45000字符的材料停在待分段处理；扫描件、音视频、图片和任意外部网页需额外提取。检索是有字符预算的词项与片段匹配，不是向量数据库。真实新会议事件、关机运行及其他账号权限须单独验收，不能由离线测试替代。
-
-## 验证
+超过45000字符的材料需分段处理；文字 PDF 需要 `pdftotext`，扫描件、图片、音视频及任意外部网页需额外提取。检索使用词项与片段匹配。真实事件触发、设备关机运行和真实归档应分别验收，离线测试不能替代。
 
 ```bash
 PYTHONDONTWRITEBYTECODE=1 python3 -m unittest discover -s tests -v
 python3 scripts/check_release.py
 ```
 
-功能代码已通过38项离线测试和三个Skill格式校验；发布检查同时核验文件范围、敏感信息模式和文档链接。测试使用虚构资料和模拟 CLI，不连接真实知识库。新用户先验收只读目录，再验收背景和合成材料；最后对一份明确确认的资料执行归档。任何“待核验”写入都先回读，不能盲目重试。
-
-公开包只包含代码、模板和虚构测试，不包含个人正文、身份、缓存、访问凭据或模型 Key。仓库发布不自动安装 Skill、不创建飞书授权，也不替用户开启 GitHub Actions。
+每人独立授权、独立配置与缓存。公开包只包含代码、模板和虚构测试，不含个人文档或凭据；安装不会自动授予飞书权限。
