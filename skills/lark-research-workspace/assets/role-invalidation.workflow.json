@@ -1,0 +1,110 @@
+{
+  "title": "工作知识库｜偏好修改后更新背景版本",
+  "steps": [
+    {
+      "children": {
+        "links": []
+      },
+      "data": {
+        "field_watch_info": [
+          {
+            "field_name": "配置内容"
+          },
+          {
+            "field_name": "名称"
+          },
+          {
+            "field_name": "启用"
+          }
+        ],
+        "table_name": "用户与角色",
+        "trigger_control_list": [
+          "pasteUpdate",
+          "automationBatchUpdate",
+          "syncUpdate",
+          "appendImport",
+          "openAPIBatchUpdate"
+        ]
+      },
+      "id": "changed",
+      "next": "old_version",
+      "title": "用户背景或偏好变化",
+      "type": "SetRecordTrigger"
+    },
+    {
+      "id": "old_version",
+      "type": "FindRecordAction",
+      "title": "读取上一个缓存版本",
+      "next": "version",
+      "data": {
+        "table_name": "共享上下文",
+        "field_names": [
+          "来源版本"
+        ],
+        "should_proceed_when_no_results": false,
+        "filter_info": {
+          "conjunction": "and",
+          "conditions": [
+            {
+              "field_name": "名称",
+              "operator": "is",
+              "value": [
+                {
+                  "value_type": "text",
+                  "value": "共享上下文包"
+                }
+              ]
+            }
+          ]
+        }
+      }
+    },
+    {
+      "children": {
+        "links": []
+      },
+      "data": {
+        "field_values": [
+          {
+            "field_name": "来源版本",
+            "value": [
+              {
+                "value_type": "ref",
+                "value": "$.old_version.firstfieldsRecord.{{field:共享上下文.来源版本}}"
+              },
+              {
+                "value_type": "text",
+                "value": "|role-change@"
+              },
+              {
+                "value_type": "ref",
+                "value": "$.changed.startTime"
+              }
+            ]
+          }
+        ],
+        "filter_info": {
+          "conditions": [
+            {
+              "field_name": "名称",
+              "operator": "is",
+              "value": [
+                {
+                  "value": "共享上下文包",
+                  "value_type": "text"
+                }
+              ]
+            }
+          ],
+          "conjunction": "and"
+        },
+        "max_set_record_num": 1,
+        "ref_info": null,
+        "table_name": "共享上下文"
+      },
+      "id": "version",
+      "title": "新资料不复用旧偏好的摘要",
+      "type": "SetRecordAction"
+    }
+  ]
+}
