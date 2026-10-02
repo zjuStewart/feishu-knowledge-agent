@@ -17,6 +17,13 @@ SETTINGS = None
 DEFAULT_CONFIG = Path.home() / ".config/lark-wiki-directory/profile.json"
 
 
+def shared_roots(settings):
+    roots = settings.get('shared_context_roots', [settings.get('shared_context_root')])
+    if not isinstance(roots, list) or not roots or any(not isinstance(v, str) or not v.strip() for v in roots):
+        raise ValueError('Expected one or more nonempty shared background root IDs')
+    return list(dict.fromkeys(v.strip() for v in roots))
+
+
 def configure(config_path, output_dir=None):
     """Accept either space settings or a local pointer to existing settings."""
     global ROOT, SETTINGS
@@ -31,12 +38,14 @@ def configure(config_path, output_dir=None):
         settings = json.loads(settings_path.read_text(encoding="utf-8"))
     else:
         settings = profile
-    required = ("space_id", "space_name", "base_url", "shared_context_root")
+    required = ("space_id", "space_name", "base_url")
     if any(not isinstance(settings.get(k), str) or not settings[k].strip() for k in required):
         raise ValueError("Missing directory profile fields")
     if not settings["base_url"].startswith("https://"):
         raise ValueError("Expected an HTTPS Feishu base URL")
     SETTINGS = {k: settings[k] for k in required}
+    SETTINGS['shared_context_roots'] = shared_roots(settings)
+    SETTINGS['shared_context_root'] = SETTINGS['shared_context_roots'][0]
     if profile.get('cli'): SETTINGS['cli'] = profile['cli']
     SETTINGS["base_url"] = SETTINGS["base_url"].rstrip("/")
     destination = output_dir or profile.get("output_dir") or str(settings_path.parent)
@@ -87,6 +96,7 @@ def list_nodes(parent, cursor=None):
 
 def refresh():
     old = read_json(ROOT / "knowledge-map.json", {"nodes": []})
+    roots = shared_roots(SETTINGS)
     queue = deque([(None, [], False)])
     seen = set()
     nodes = []
@@ -105,7 +115,7 @@ def refresh():
                 seen.add(token)
                 title = item.get("title", "").strip()
                 path = ancestors + [title]
-                is_shared = shared or token == SETTINGS["shared_context_root"]
+                is_shared = shared or token in roots
                 nodes.append({**item, "title": title, "path": "/".join(path),
                               "url": SETTINGS["base_url"] + "/wiki/" + token,
                               "shared_context": is_shared,
@@ -120,7 +130,8 @@ def refresh():
             cursors.add(next_cursor)
             cursor = next_cursor
     stamp = datetime.now(ZoneInfo("Asia/Shanghai")).isoformat(timespec="seconds")
-    root_visible = SETTINGS["shared_context_root"] in seen
+    missing_roots = [token for token in roots if token not in seen]
+    root_visible = not missing_roots
     before, after = node_map(old["nodes"]), node_map(nodes)
     changes = {
         "added": sorted(set(after) - set(before)),
@@ -132,10 +143,11 @@ def refresh():
     output = {"space_name": SETTINGS["space_name"], "space_id": SETTINGS["space_id"],
               "synced_at": stamp, "directory_complete": True,
               "directory_hash": digest, "shared_context_root_visible": root_visible,
+              "shared_context_roots": roots, "missing_shared_context_roots": missing_roots,
               "content_coverage": "Directory only; body reading tracked separately.", "nodes": nodes}
     lines = ["# 工作知识库目录", "", f"知识库：{SETTINGS['space_name']}",
              f"目录同步时间：{stamp}", f"节点数：{len(nodes)}", "",
-             "本目录完整遍历当前用户可见的节点。列入目录不表示正文已读取。共同背景标记覆盖指定根页面及其子文档。", ""]
+             "本目录完整遍历当前用户可见的节点。列入目录不表示正文已读取。共同背景标记覆盖全部指定根页面及其子文档，重叠部分只计算一次。", ""]
     if not root_visible:
         lines += ["共同背景根节点不在当前可见目录中；停止使用旧背景，需确认新的背景根节点。此状态不等同于已证明原文被删除。", ""]
     children = {}
@@ -159,7 +171,7 @@ def refresh():
     status = {"ok": True, "last_checked_at": stamp, "last_success_at": stamp,
               "nodes": len(nodes), "shared_context_nodes": sum(n["shared_context"] for n in nodes),
               "directory_complete": True, "directory_changed": changed, "changes": changes,
-              "shared_context_root_visible": root_visible,
+              "shared_context_root_visible": root_visible, "missing_shared_context_roots": missing_roots,
               "needs_user_action": not root_visible}
     atomic_write(ROOT / "sync-status.json", json.dumps(status, ensure_ascii=False, indent=2))
     return status
