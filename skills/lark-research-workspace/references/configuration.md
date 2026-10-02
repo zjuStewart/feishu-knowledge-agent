@@ -27,7 +27,9 @@ python3 scripts/init_workspace.py \
 }
 ```
 
-`directory_refresh_config` 确保日常同步及归档后的刷新使用同一位用户的配置。移动安装位置后更新 `directory_refresh_script`。`settings.json` 保存 `base_url`、`space_name`、`space_id`、`shared_context_root`。
+`directory_refresh_config` 确保日常同步及归档后的刷新使用同一位用户的配置。移动安装位置后更新 `directory_refresh_script`。`settings.json` 保存 `base_url`、`space_name`、`space_id` 和背景入口。
+
+多个共同背景入口可重复传入 `--shared-root`，初始化会保存 `shared_context_roots` 数组及兼容旧版的首个 `shared_context_root`。脚本优先使用数组；只有旧字段的配置仍有效。背景取全部入口及后代的并集，重叠文档去重；任一必需入口不可见时暂停当前背景，恢复访问或由用户调整入口后再同步。不要为了支持多个入口而移动知识库文档。
 
 `state/roles.json` 保存用户背景及管理、内容、趣味偏好。三个角色键名固定，内容可改；增加其他角色还需调整脚本参数校验及检索偏好。没有 `cloud-config.json` 时为本地模式：`pull-cloud` 和 `receive-cloud` 不联网，背景保存在本地；`publish` 和 `publish-plan` 需要云端配置。配置云端后以“用户与角色”表的启用项为准，见 [云端部署](cloud-setup.md)。
 
