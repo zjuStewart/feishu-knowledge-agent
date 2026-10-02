@@ -1,0 +1,330 @@
+{
+  "资料收件箱": [
+    {
+      "name": "标题",
+      "type": "text"
+    },
+    {
+      "name": "资料类型",
+      "type": "select",
+      "multiple": false,
+      "options": [
+        {
+          "name": "智能纪要"
+        },
+        {
+          "name": "妙记"
+        },
+        {
+          "name": "原始记录"
+        },
+        {
+          "name": "上传文件"
+        },
+        {
+          "name": "外部转发"
+        }
+      ]
+    },
+    {
+      "name": "来源链接",
+      "type": "text"
+    },
+    {
+      "name": "正文",
+      "type": "text",
+      "description": "粘贴原始文字；只有链接或附件时等待正文提取"
+    },
+    {
+      "name": "附件",
+      "type": "attachment"
+    },
+    {
+      "name": "处理状态",
+      "type": "select",
+      "multiple": false,
+      "options": [
+        {
+          "name": "待接收"
+        },
+        {
+          "name": "待整理"
+        },
+        {
+          "name": "处理中"
+        },
+        {
+          "name": "待确认"
+        },
+        {
+          "name": "已归档"
+        },
+        {
+          "name": "待补充"
+        },
+        {
+          "name": "重复材料"
+        },
+        {
+          "name": "测试完成"
+        }
+      ],
+      "default_value": [
+        "待接收"
+      ]
+    },
+    {
+      "name": "来源标识",
+      "type": "text"
+    },
+    {
+      "name": "来源版本",
+      "type": "text"
+    },
+    {
+      "name": "内容指纹",
+      "type": "text"
+    },
+    {
+      "name": "会议时间",
+      "type": "text"
+    },
+    {
+      "name": "统一摘要",
+      "type": "text"
+    },
+    {
+      "name": "摘要依据版本",
+      "type": "text"
+    },
+    {
+      "name": "共同背景版本",
+      "type": "text"
+    },
+    {
+      "name": "阅读覆盖",
+      "type": "text"
+    },
+    {
+      "name": "管理视角",
+      "type": "text"
+    },
+    {
+      "name": "内容视角",
+      "type": "text"
+    },
+    {
+      "name": "趣味观察",
+      "type": "text"
+    },
+    {
+      "name": "建议归档路径",
+      "type": "text"
+    },
+    {
+      "name": "目标父节点",
+      "type": "text"
+    },
+    {
+      "name": "待确认事项",
+      "type": "text"
+    },
+    {
+      "name": "归档结果",
+      "type": "text"
+    },
+    {
+      "name": "处理回执",
+      "type": "text"
+    },
+    {
+      "name": "接收时间",
+      "type": "created_at"
+    },
+    {
+      "name": "最近修改",
+      "type": "updated_at"
+    }
+  ],
+  "共享上下文": [
+    {
+      "name": "名称",
+      "type": "text"
+    },
+    {
+      "name": "来源链接",
+      "type": "text"
+    },
+    {
+      "name": "来源标识",
+      "type": "text"
+    },
+    {
+      "name": "来源版本",
+      "type": "text"
+    },
+    {
+      "name": "内容指纹",
+      "type": "text"
+    },
+    {
+      "name": "可复用摘要",
+      "type": "text"
+    },
+    {
+      "name": "原文缓存",
+      "type": "text"
+    },
+    {
+      "name": "版本清单",
+      "type": "text"
+    },
+    {
+      "name": "核验时间",
+      "type": "text"
+    },
+    {
+      "name": "状态",
+      "type": "select",
+      "multiple": false,
+      "options": [
+        {
+          "name": "有效"
+        },
+        {
+          "name": "待刷新"
+        },
+        {
+          "name": "不可访问"
+        }
+      ],
+      "default_value": [
+        "有效"
+      ]
+    }
+  ],
+  "用户与角色": [
+    {
+      "name": "名称",
+      "type": "text"
+    },
+    {
+      "name": "类型",
+      "type": "select",
+      "multiple": false,
+      "options": [
+        {
+          "name": "用户背景"
+        },
+        {
+          "name": "角色偏好"
+        },
+        {
+          "name": "系统规则"
+        }
+      ]
+    },
+    {
+      "name": "配置内容",
+      "type": "text"
+    },
+    {
+      "name": "启用",
+      "type": "checkbox"
+    }
+  ],
+  "归档计划": [
+    {
+      "name": "计划编号",
+      "type": "text"
+    },
+    {
+      "name": "资料标题",
+      "type": "text"
+    },
+    {
+      "name": "来源链接",
+      "type": "text"
+    },
+    {
+      "name": "来源标识",
+      "type": "text"
+    },
+    {
+      "name": "来源版本",
+      "type": "text"
+    },
+    {
+      "name": "正文指纹",
+      "type": "text"
+    },
+    {
+      "name": "目标路径",
+      "type": "text"
+    },
+    {
+      "name": "目标父节点",
+      "type": "text"
+    },
+    {
+      "name": "动作",
+      "type": "text"
+    },
+    {
+      "name": "预览内容",
+      "type": "text"
+    },
+    {
+      "name": "计划指纹",
+      "type": "text"
+    },
+    {
+      "name": "状态",
+      "type": "select",
+      "multiple": false,
+      "options": [
+        {
+          "name": "待人工确认"
+        },
+        {
+          "name": "已确认待执行"
+        },
+        {
+          "name": "执行中"
+        },
+        {
+          "name": "已归档"
+        },
+        {
+          "name": "已失效"
+        },
+        {
+          "name": "待核验"
+        }
+      ],
+      "default_value": [
+        "待人工确认"
+      ]
+    },
+    {
+      "name": "确认方式",
+      "type": "text"
+    },
+    {
+      "name": "确认记录",
+      "type": "text"
+    },
+    {
+      "name": "执行回执",
+      "type": "text"
+    },
+    {
+      "name": "结果链接",
+      "type": "text"
+    },
+    {
+      "name": "最近修改",
+      "type": "updated_at"
+    }
+  ]
+}
