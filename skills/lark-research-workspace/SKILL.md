@@ -11,6 +11,8 @@ description: "基于飞书知识库与资料处理台接收会议和文件、维
 
 ## 首次使用
 
+用户要求安装或配置时，先按 [Agent配置提示词与准备清单](references/agent-setup-prompts.md) 收集缺少的资料；可从用户给的链接查询技术ID，不要求用户手工查找。只补问影响配置的缺项，不重复索取已提供的信息。
+
 没有个人配置时，识别用户指定的知识库、共同背景根节点、租户域名和本地数据目录；使用 `scripts/init_workspace.py` 生成独立配置，不复用其他人的表、身份或缓存。参数见 [配置说明](references/configuration.md)。初始本地模式不要求先创建云端处理台；需要云端总结时按 [云端部署](references/cloud-setup.md) 配置，定时使用 [每日同步模板](references/scheduling.md)。三个配套Skill应一并安装。
 
 ## 同步与问答
