@@ -64,6 +64,11 @@ class TestCloudExecutor(unittest.TestCase):
         self.assertEqual(self.rows[0]['状态'],['待核验'])
         with self.assertRaises(Error):w.execute_confirmation(p['confirmation_phrase'],'human')
         self.assertEqual(len(self.moves()),1)
+    def test_fixture_and_inbox_copy_are_excluded_by_stable_id(self):
+        self.w.settings['excluded_document_ids']=['FixtureDoc']
+        self.assertFalse(self.w.source_available({'document_id':'FixtureDoc'}))
+        self.assertFalse(self.w.source_available({'source_id':'docx:FixtureDoc','title':'renamed'}))
+        self.assertTrue(self.w.source_available({'document_id':'OtherDoc'}))
     def test_local_execution_disabled_in_cloud_mode(self):
         w,p=self.worker();local=Workspace(self.root/'profile.json',self.fake)
         with self.assertRaises(Error):local.execute(p['id'],p['confirmation_phrase'],'human')

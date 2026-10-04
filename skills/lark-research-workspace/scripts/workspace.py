@@ -368,6 +368,7 @@ class Workspace:
         if item.get('active') is False:return False
         sid=item.get('source_id','')
         docid=item.get('document_id') or item.get('archive_document_id') or (sid[5:] if sid.startswith('docx:') else None)
+        if docid in self.settings.get('excluded_document_ids',[]):return False
         cached=self.state('documents/'+docid+'.json') if docid else None
         if cached and (cached.get('wiki_managed') or cached.get('path')):
             if cached.get('active') is False:return False
