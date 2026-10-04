@@ -41,6 +41,11 @@ def plain(xml):
 
 class Error(RuntimeError): pass
 
+class APIError(Error):
+    def __init__(self, error):
+        self.code=error.get('code')
+        super().__init__('飞书操作未完成：'+str(error.get('subtype',error.get('type','unknown'))))
+
 def shared_roots(settings):
     roots=settings.get('shared_context_roots',[settings.get('shared_context_root')])
     if not isinstance(roots,list) or not roots or any(not isinstance(v,str) or not v.strip() for v in roots):
@@ -57,7 +62,7 @@ class Client:
         try: x=json.loads(p.stdout if p.returncode==0 else p.stderr)
         except ValueError: raise Error('飞书返回不可解析的响应；已停止，不自动重试写入。')
         if p.returncode or not x.get('ok') or x.get('identity')!='user':
-            e=x.get('error',{}); raise Error('飞书操作未完成：'+str(e.get('subtype',e.get('type','unknown'))))
+            raise APIError(x.get('error',{}))
         return x['data']
 
 class Workspace:
@@ -70,6 +75,8 @@ class Workspace:
         self.cli=client or Client(self.cfg)
         self.cloud=read(self.cfg.get('cloud_config',''),{}) if self.cfg.get('cloud_config') else {}
         self.settings=read(self.cfg['settings'])
+        if self.cloud.get('space_id') and str(self.cloud['space_id'])!=str(self.settings['space_id']):
+            raise Error('处理台绑定了另一个知识库，已停止；请使用该知识库自己的配置。')
     @contextlib.contextmanager
     def lock(self):
         with (self.root/'.workspace.lock').open('a+') as f:
@@ -259,19 +266,23 @@ class Workspace:
     def cloud_read(self,table,fields):
         path=self.root/'evidence'/('cloud-'+table+'.ndjson'); path.parent.mkdir(parents=True,exist_ok=True)
         argv=[self.cli.cli,'base','+record-list','--base-token',self.cloud['base_token'],'--table-id',self.cloud['tables'][table],
-              '--format','ndjson','--output',os.path.relpath(path,Path.cwd()),'--overwrite','--as','user']
+              '--format','ndjson','--output',str(path.relative_to(self.root)),'--overwrite','--as','user']
         for field in fields: argv.extend(['--field-id',field])
-        p=subprocess.run(argv,capture_output=True,text=True,timeout=120,env={**os.environ,'LARKSUITE_CLI_NO_UPDATE_NOTIFIER':'1','LARKSUITE_CLI_NO_SKILLS_NOTIFIER':'1'})
+        p=subprocess.run(argv,cwd=self.root,capture_output=True,text=True,timeout=120,env={**os.environ,'LARKSUITE_CLI_NO_UPDATE_NOTIFIER':'1','LARKSUITE_CLI_NO_SKILLS_NOTIFIER':'1'})
         if p.returncode: raise Error('云端记录读取失败，旧本地数据保留')
         manifest=json.loads(p.stdout)
         if manifest.get('has_more') or manifest.get('records_count',0)>2000: raise Error('云端记录尚未完整读取；不能以局部覆盖完整索引')
         return [json.loads(line) for line in path.read_text().splitlines() if line.strip()]
     def pull_cloud(self):
         if not self.cloud: return {'records':0,'changed':0,'mode':'local'}
-        rows=self.cloud_read('资料收件箱',['标题','资料类型','来源链接','正文','来源标识','来源版本','内容指纹','统一摘要','共同背景版本','阅读覆盖','处理状态','处理回执'])
+        fields=['标题','资料类型','来源链接','正文','来源标识','来源版本','内容指纹','统一摘要','共同背景版本','阅读覆盖','处理状态','处理回执']
+        if self.cloud.get('schema_version',1)>=2: fields+=['所属知识库ID']
+        rows=self.cloud_read('资料收件箱',fields)
+        def in_scope(row):
+            return self.cloud.get('schema_version',1)<2 or str(row.get('所属知识库ID',''))==str(self.settings['space_id'])
         changed=0
         for row in rows:
-            if row.get('处理状态')==['测试完成'] or not row.get('正文'):
+            if not in_scope(row) or row.get('处理状态')==['测试完成'] or not row.get('正文'):
                 stale=self.state('inbox/cloud-'+row['record_id']+'.json')
                 if stale: stale['active']=False; self.save('inbox/cloud-'+row['record_id']+'.json',stale)
                 continue
@@ -285,7 +296,7 @@ class Workspace:
                 'coverage':row.get('阅读覆盖') or '提交的正文；原始链接和附件需独立核验','cloud_record_id':row['record_id']}
             changed+=int(digest({k:v for k,v in item.items() if k!='received_at'})!=digest({k:v for k,v in old.items() if k!='received_at'}))
             self.save('inbox/'+key+'.json',item)
-        live={r['record_id'] for r in rows if r.get('正文') and r.get('处理状态')!=['测试完成']}
+        live={r['record_id'] for r in rows if in_scope(r) and r.get('正文') and r.get('处理状态')!=['测试完成']}
         for p in (self.root/'inbox').glob('*.json'):
             item=read(p)
             if item.get('cloud_record_id') and item['cloud_record_id'] not in live:
@@ -296,9 +307,12 @@ class Workspace:
         return {'records':len(rows),'changed':changed}
     def receive_cloud(self):
         if not self.cloud: return []
-        rows=self.cloud_read('资料收件箱',['标题','资料类型','来源链接','正文','附件','处理状态','阅读覆盖'])
+        fields=['标题','资料类型','来源链接','正文','附件','处理状态','阅读覆盖']
+        if self.cloud.get('schema_version',1)>=2: fields+=['所属知识库ID']
+        rows=self.cloud_read('资料收件箱',fields)
         results=[]
         for row in rows:
+            if self.cloud.get('schema_version',1)>=2 and str(row.get('所属知识库ID',''))!=str(self.settings['space_id']): continue
             if row.get('处理状态')!=['待接收'] or row.get('正文'): continue
             rid=row['record_id']; kind=(row.get('资料类型') or ['原始记录'])[0]
             try:
@@ -409,13 +423,18 @@ class Workspace:
     def publish_plan(self,pid):
         plan=self.state('plans/'+pid+'.json')
         if not plan: raise Error('计划不存在')
-        c=plan['content']; result=self.cloud_write('归档计划',{'计划编号':pid,'资料标题':c['title'],'来源链接':plan['source'].get('url',''),
+        presentation=self.plan_presentation(plan)
+        c=plan['content']; fields={'资料标题':c['title'],'来源链接':plan['source'].get('url',''),
             '来源标识':c['source_id'],'来源版本':str(c['revision']),'正文指纹':c['hash'],'目标路径':c['path'],
             '目标父节点':c['parent'],'动作':'移动原生文档' if c['action']=='move_document' else '创建可编辑文字副本',
             '预览内容':json.dumps(c,ensure_ascii=False),'计划指纹':plan['fingerprint'],'状态':[plan['state']],
-            '确认方式':'在当前对话回复：'+plan['confirmation_phrase']+'。修改表格状态不构成执行授权。',
+            '确认方式':'核对来源、动作和目标后回复：'+presentation['confirmation_phrase']+'。修改表格状态不构成执行授权。',
             '结果链接':plan.get('result_url',''),'确认记录':json.dumps(plan.get('approval',{}),ensure_ascii=False),
-            '执行回执':json.dumps({k:plan[k] for k in ('verified_at','editable_format_verified','edit_permission_verified','post_archive','invalidation_reason') if k in plan},ensure_ascii=False)},plan.get('cloud_record_id'))
+            '执行回执':json.dumps({k:plan[k] for k in ('verified_at','editable_format_verified','edit_permission_verified','post_archive','invalidation_reason','write_result') if k in plan},ensure_ascii=False)}
+        if self.cloud.get('schema_version',1)>=2:
+            fields.update({'归档事项':presentation['display_name'],'内部编号':pid,'所属知识库ID':str(c['space_id'])})
+        else: fields['计划编号']=pid
+        result=self.cloud_write('归档计划',fields,plan.get('cloud_record_id'))
         if not plan.get('cloud_record_id'):
             plan['cloud_record_id']=result['record_id_list'][0];self.save('plans/'+pid+'.json',plan)
         return result
@@ -427,6 +446,7 @@ class Workspace:
         fields={'标题':item['title'],'资料类型':[item['type']],'正文':item['text'],'来源链接':item['source'].get('url',''),
                 '来源标识':item['source_id'],'来源版本':str(item['revision']),'内容指纹':item['hash'],
                 '阅读覆盖':item['coverage'],'处理状态':['待整理']}
+        if self.cloud.get('schema_version',1)>=2: fields['所属知识库ID']=str(self.settings['space_id'])
         result=self.cloud_write('资料收件箱',fields)
         ids=result.get('record_id_list')
         if not ids or len(ids)!=1: raise Error('云端可能已创建；需要回读，不自动重试。')
@@ -459,7 +479,9 @@ class Workspace:
             sig=digest(c['text'])
             if sig in seen or used+len(c['text'])>limit: continue
             chunks.append(c); seen.add(sig); used+=len(c['text'])
-        out={'role':role,'role_preference':roles.get(role,''),'user_context':roles.get('用户背景',''),
+        out={'role':role,'role_preference':roles.get(role,''),
+             'team_context':roles.get('团队背景',roles.get('用户背景','')),
+             'user_context':self.state('personal-context.json',{}).get('text',''),
              'shared_context':bundle,'evidence':chunks,'evidence_characters':used,
              'notice':'缓存片段附核验时间；回答现状、负责人、期限或执行归档前须回查相关原文。历史与待确认材料不自动升级为现行事实。'}
         self.save('last-context-query.json',out)
@@ -473,6 +495,20 @@ class Workspace:
             if str(n['space_id'])!=str(self.settings['space_id']): raise Error('目标不在授权知识库内')
             chain.append(n); token=n.get('parent_node_token','')
         return '/'.join(n['title'] for n in reversed(chain)),chain[0]
+    def plan_presentation(self,plan):
+        c=plan['content']; space=self.settings.get('space_name') or str(c['space_id'])
+        target=space+'/'+c['path']
+        action='移动原文' if c['action']=='move_document' else '创建可编辑文字副本'
+        return {'display_name':'《'+c['title']+'》 → '+target,
+                'confirmation_phrase':'确认'+action+'《'+c['title']+'》（版本'+str(c['revision'])+'）至「'+target+'」'}
+    def execute_named(self,confirmation,evidence):
+        matches=[]
+        for path in (self.root/'plans').glob('ARC-*.json'):
+            plan=read(path)
+            if plan['state'] not in ('已归档','已失效') and self.plan_presentation(plan)['confirmation_phrase']==confirmation:
+                matches.append(plan)
+        if len(matches)!=1: raise Error('确认内容没有唯一对应的有效计划；请按来源链接、版本和完整目标位置重新核对。')
+        return self.execute(matches[0]['id'],confirmation,evidence)
     def prepare(self,item_id,parent,action='move_document'):
         if not re.fullmatch('[a-f0-9]{20}',item_id): raise Error('资料编号不合法')
         item=self.state('inbox/'+item_id+'.json')
@@ -492,8 +528,10 @@ class Workspace:
         fingerprint=digest(content); pid='ARC-'+fingerprint[:12]
         plan={'id':pid,'fingerprint':fingerprint,'item_id':item_id,'created_at':now(),'state':'待人工确认','content':content,
               'confirmation_phrase':'确认归档 '+pid,'source':item['source'],'coverage':item['coverage']}
+        plan.update(self.plan_presentation(plan))
         existing=self.state('plans/'+pid+'.json')
-        if existing: return existing
+        if existing:
+            existing.update(self.plan_presentation(existing));self.save('plans/'+pid+'.json',existing);return existing
         self.save('plans/'+pid+'.json',plan)
         return plan
     def validate_plan(self,plan):
@@ -508,11 +546,26 @@ class Workspace:
         elif item['source']['kind']=='file':
             if hashlib.sha256(Path(item['source']['path']).read_bytes()).hexdigest()!=item['hash']: raise Error('本地原文件已改变')
         return item
+    def execution_started(self,plan):
+        pass
+    def source_move_args(self,item):
+        # Resolve the live source, including a docx URL already inside another Wiki.
+        try:
+            node=self.cli.call(['wiki','+node-get','--node-token',item['source']['token']])
+            node=node.get('node',node)
+            if node.get('obj_token')!=item['source']['token'] or node.get('obj_type')!='docx':
+                raise Error('来源节点与原文身份不一致')
+            return ['--node-token',node['node_token']]
+        except APIError as e:
+            if str(e.code)!='131014': raise
+            return ['--obj-type','docx','--obj-token',item['source']['token']]
     def execute(self,pid,confirmation,evidence):
+        if self.cloud.get('execution_mode')=='cloud' and not getattr(self,'is_cloud_executor',False):
+            raise Error('本库由云端执行归档；请在指定飞书智能体确认，避免本地和云端同时执行。')
         if not re.fullmatch('ARC-[a-f0-9]{12}',pid): raise Error('计划编号不合法')
         plan=self.state('plans/'+pid+'.json')
         if not plan: raise Error('计划不存在')
-        if confirmation!=plan['confirmation_phrase'] or not evidence.strip(): raise Error('缺少用户对本计划的明确确认与原始确认记录')
+        if confirmation not in (self.plan_presentation(plan)['confirmation_phrase'],plan['confirmation_phrase']) or not evidence.strip(): raise Error('缺少用户对本计划的明确确认与原始确认记录')
         if plan['state']=='已归档': return plan
         if plan['state']=='已失效':raise Error('此计划已失效，需要根据当前目录重新生成计划')
         if plan['state'] in ('执行中','待核验'): raise Error('上次操作结果需先回读，禁止自动重复创建或移动')
@@ -520,10 +573,10 @@ class Workspace:
         plan.update(state='执行中',approval={'text':confirmation,'evidence':evidence,'time':now()})
         self.save('plans/'+pid+'.json',plan)
         try:
+            self.execution_started(plan)
             c=plan['content']
             if c['action']=='move_document':
-                known=next((n for n in read(self.cfg['directory'],{}).get('nodes',[]) if n.get('obj_token')==item['source']['token']),None)
-                mode_args=['--node-token',self.url(item['source']['url'])[1]] if '/wiki/' in item['source']['url'] else (['--node-token',known['node_token']] if known else ['--obj-type','docx','--obj-token',item['source']['token']])
+                mode_args=self.source_move_args(item)
                 result=self.cli.call(['wiki','+move']+mode_args+[
                     '--target-space-id',str(c['space_id']),'--target-parent-token',c['parent']])
                 plan['write_result']=result; self.save('plans/'+pid+'.json',plan)
@@ -587,6 +640,7 @@ def main():
     a=s.add_parser('publish-plan'); a.add_argument('plan_id')
     a=s.add_parser('prepare'); a.add_argument('item_id'); a.add_argument('--parent',required=True); a.add_argument('--action',default='move_document')
     a=s.add_parser('execute'); a.add_argument('plan_id'); a.add_argument('--confirmation',required=True); a.add_argument('--evidence',required=True)
+    a=s.add_parser('execute-named'); a.add_argument('--confirmation',required=True); a.add_argument('--evidence',required=True)
     args=p.parse_args(); w=Workspace(args.config)
     try:
         with w.lock():
@@ -602,6 +656,7 @@ def main():
             elif args.command=='publish-plan': result=w.publish_plan(args.plan_id)
             elif args.command=='prepare': result=w.prepare(args.item_id,args.parent,args.action)
             elif args.command=='execute': result=w.execute(args.plan_id,args.confirmation,args.evidence)
+            elif args.command=='execute-named': result=w.execute_named(args.confirmation,args.evidence)
         print(json.dumps({'ok':True,'result':result},ensure_ascii=False,indent=2))
     except (Error,ValueError,OSError,KeyError,subprocess.TimeoutExpired) as e:
         print(json.dumps({'ok':False,'message':str(e)},ensure_ascii=False)); sys.exit(1)

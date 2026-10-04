@@ -41,7 +41,8 @@ def initialize(destination, base_url, space_id, space_name, shared_root,
          'directory':str(root/'directory/knowledge-map.json'), 'cloud_config':str(root/'cloud-config.json'),
          'directory_refresh_script':str(refresh), 'directory_refresh_config':str(root/'directory-profile.json'),
          'cli':shutil.which(cli) or cli})
-    save('state/roles.json', {'用户背景':'由当前用户填写工作范围、目标与限制。',
+    save('state/personal-context.json', {'text':''})
+    save('state/roles.json', {'团队背景':'由团队维护共同工作范围、目标与限制；个人偏好保存在个人本地配置。',
          '管理':'关注任务、提出者与负责人、期限、依赖和未决事项。',
          '内容':'关注观点、证据、方法、分歧和知识缺口。',
          '趣味':'仅提取有原文支持且适合工作记录的有趣表达。'})

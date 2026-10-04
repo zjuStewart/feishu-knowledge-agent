@@ -144,6 +144,10 @@
     {
       "name": "最近修改",
       "type": "updated_at"
+    },
+    {
+      "name": "所属知识库ID",
+      "type": "text"
     }
   ],
   "共享上下文": [
@@ -235,7 +239,7 @@
   ],
   "归档计划": [
     {
-      "name": "计划编号",
+      "name": "归档事项",
       "type": "text"
     },
     {
@@ -325,6 +329,14 @@
     {
       "name": "最近修改",
       "type": "updated_at"
+    },
+    {
+      "name": "内部编号",
+      "type": "text"
+    },
+    {
+      "name": "所属知识库ID",
+      "type": "text"
     }
   ]
 }

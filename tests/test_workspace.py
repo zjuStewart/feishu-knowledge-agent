@@ -10,6 +10,8 @@ class Fake:
         self.calls.append(args)
         if args[:2]==['docs','+fetch']:
             return {'document':{'document_id':'Doc123','revision_id':self.revision,'content':self.content,'reference_map':{}}}
+        if args[:2]==['wiki','+node-get'] and args[-1]=='Doc123':
+            return {'node_token':'Source123','obj_token':'Doc123','obj_type':'docx','parent_node_token':'','title':'会议','space_id':'2'}
         if args[:2]==['wiki','+node-get']:
             return {'node_token':'Parent123','obj_token':'ParentDoc','obj_type':'docx','parent_node_token':'','title':self.path,'space_id':'1'}
         if args[:3]==['drive','permission.members','auth']: return {'auth_result':True}
